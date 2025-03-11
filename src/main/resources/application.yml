@@ -1,0 +1,30 @@
+server:
+  port: 9000
+
+  # Database Configuration
+spring:
+  application:
+    name: kibuti-OAuth2-server
+
+  datasource:
+    url: jdbc:postgresql://localhost:5090/kibutioauthserver_db
+    username: postgres
+    password: kibutioauthserver_db@123
+    driver-class-name: org.postgresql.Driver
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update  # Use 'validate' in production
+    show-sql: false
+    properties:
+
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.kibuti.oauth2server: DEBUG

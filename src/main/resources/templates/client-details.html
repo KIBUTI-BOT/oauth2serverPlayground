@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>OAuth2 Application Details</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+  <!-- Success Alert for newly created apps -->
+  <div class="row mb-4" th:if="${success}">
+    <div class="col-md-10 offset-md-1">
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <h4 class="alert-heading">Application Registered Successfully!</h4>
+        <p th:text="${success}"></p>
+        <p class="mb-0">Make sure to save your client credentials. Your client secret won't be shown again!</p>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-10 offset-md-1">
+      <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h3 th:text="${client.clientName}">Application Name</h3>
+          <div>
+            <a th:href="@{/developer/dashboard}" class="btn btn-sm btn-light">Back to Dashboard</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Client Credentials -->
+          <div class="mb-4">
+            <h4>Client Credentials</h4>
+            <div class="alert alert-warning">
+              <strong>Important:</strong> Keep these credentials secure. Never expose them in client-side code.
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-3 fw-bold">Client ID:</div>
+              <div class="col-md-9">
+                <div class="input-group">
+                  <input type="text" class="form-control" th:value="${client.clientId}" readonly id="clientId">
+                  <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('clientId')">
+                    <i class="bi bi-clipboard"></i> Copy
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="row mb-3" th:if="${clientSecret != null && !clientSecret.isEmpty()}">
+              <div class="col-md-3 fw-bold">Client Secret:</div>
+              <div class="col-md-9">
+                <div class="input-group">
+                  <input type="text" class="form-control" th:value="${clientSecret}" readonly id="clientSecret">
+                  <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('clientSecret')">
+                    <i class="bi bi-clipboard"></i> Copy
+                  </button>
+                </div>
+                <small class="text-danger">Save this value now! It won't be shown again.</small>
+              </div>
+            </div>
+
+            <div class="row" th:if="${clientSecret != null && !clientSecret.isEmpty()}">
+              <div class="col-md-3 fw-bold">Client Secret:</div>
+              <div class="col-md-9">
+                <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#regenerateSecretModal">
+                  <i class="bi bi-key"></i> Regenerate Client Secret
+                </button>
+                <small class="text-muted ms-2">Warning: This will invalidate the current secret</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Application Details -->
+          <div class="mb-4">
+            <h4>Application Details</h4>
+            <div class="row mb-3">
+              <div class="col-md-3 fw-bold">Description:</div>
+<!--              <div class="col-md-9" th:text="${client.description == null || #strings.isEmpty(client.description)}">Application description</div>-->
+            </div>
+            <div class="row mb-3" th:if="${client.homepageUrl}">
+              <div class="col-md-3 fw-bold">Homepage:</div>
+              <div class="col-md-9">
+                <a th:href="${client.homepageUrl}" target="_blank" th:text="${client.homepageUrl}">Homepage URL</a>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-3 fw-bold">Client Type:</div>
+              <div class="col-md-9">
+                <span th:if="${client.publicClient}" class="badge bg-info">Public Client (PKCE Required)</span>
+                <span th:unless="${client.publicClient}" class="badge bg-secondary">Confidential Client</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- OAuth2 Settings -->
+          <div class="mb-4">
+            <h4>OAuth2 Configuration</h4>
+
+            <div class="row mb-3">
+              <div class="col-md-3 fw-bold">Redirect URIs:</div>
+              <div class="col-md-9">
+                <ul class="list-group">
+                  <li class="list-group-item" th:each="uri : ${client.redirectUris}" th:text="${uri}">
+                    https://example.com/callback
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-3 fw-bold">Authorized Scopes:</div>
+              <div class="col-md-9">
+                                    <span th:each="scope : ${client.scopes}" class="badge bg-primary me-1 mb-1" th:text="${scope}">
+                                        openid
+                                    </span>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-3 fw-bold">Grant Types:</div>
+              <div class="col-md-9">
+                                    <span th:each="grantType : ${client.authorizationGrantTypes}" class="badge bg-success me-1 mb-1" th:text="${grantType}">
+                                        authorization_code
+                                    </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- OAuth2 Endpoints -->
+          <div class="mb-4">
+            <h4>OAuth2 Endpoints</h4>
+            <div class="table-responsive">
+              <table class="table table-bordered">
+                <thead class="table-light">
+                <tr>
+                  <th>Endpoint</th>
+                  <th>URL</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td>Authorization</td>
+                  <td><code th:text="${issuerUrl} + '/oauth2/authorize'">https://auth.example.com/oauth2/authorize</code></td>
+                </tr>
+                <tr>
+                  <td>Token</td>
+                  <td><code th:text="${issuerUrl} + '/oauth2/token'">https://auth.example.com/oauth2/token</code></td>
+                </tr>
+                <tr>
+                  <td>Userinfo</td>
+                  <td><code th:text="${issuerUrl} + '/userinfo'">https://auth.example.com/userinfo</code></td>
+                </tr>
+                <tr>
+                  <td>JWKS</td>
+                  <td><code th:text="${issuerUrl} + '/.well-known/jwks.json'">https://auth.example.com/.well-known/jwks.json</code></td>
+                </tr>
+                <tr>
+                  <td>OpenID Configuration</td>
+                  <td><code th:text="${issuerUrl} + '/.well-known/openid-configuration'">https://auth.example.com/.well-known/openid-configuration</code></td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Danger Zone -->
+          <div class="mb-4">
+            <h4 class="text-danger">Danger Zone</h4>
+            <div class="card border-danger">
+              <div class="card-body">
+                <h5 class="card-title">Delete Application</h5>
+                <p class="card-text">This action cannot be undone. This will permanently delete the application and revoke all associated tokens.</p>
+                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAppModal">
+                  Delete Application
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Regenerate Secret Modal -->
+<div class="modal fade" id="regenerateSecretModal" tabindex="-1" aria-labelledby="regenerateSecretModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title" id="regenerateSecretModalLabel">Regenerate Client Secret</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger">
+          <strong>Warning!</strong> Regenerating the client secret will invalidate the current secret. All applications using this client must be updated with the new secret.
+        </div>
+        <p>Are you sure you want to proceed?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form th:action="@{/developer/applications/{clientId}/regenerate-secret(clientId=${client.clientId})}" method="post">
+          <button type="submit" class="btn btn-warning">Regenerate Secret</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete App Modal -->
+<div class="modal fade" id="deleteAppModal" tabindex="-1" aria-labelledby="deleteAppModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="deleteAppModalLabel">Delete Application</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger">
+          <strong>Warning!</strong> This action cannot be undone. This will permanently delete the application and revoke all associated tokens.
+        </div>
+        <p>Please type the application name <strong th:text="${client.clientName}">App Name</strong> to confirm:</p>
+        <input type="text" class="form-control" id="confirmAppName">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form th:action="@{/developer/applications/{clientId}/delete(clientId=${client.clientId})}" method="post">
+          <button type="submit" class="btn btn-danger" id="deleteAppButton" disabled>Delete Application</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<script>
+  // Copy to clipboard function
+  function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    element.select();
+    document.execCommand('copy');
+
+    // Show a temporary tooltip
+    const button = element.nextElementSibling;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+    setTimeout(() => {
+      button.innerHTML = originalText;
+    }, 2000);
+  }
+
+  // Enable delete button only when name is correctly typed
+  document.getElementById('confirmAppName').addEventListener('input', function() {
+    const appName = document.querySelector('#deleteAppModalLabel').textContent.trim();
+    document.getElementById('deleteAppButton').disabled = (this.value !== appName);
+  });
+</script>
+</body>
+</html>
