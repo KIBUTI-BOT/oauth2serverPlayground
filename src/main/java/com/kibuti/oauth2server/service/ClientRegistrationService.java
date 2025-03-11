@@ -2,6 +2,7 @@ package com.kibuti.oauth2server.service;
 
 import java.util.*;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.kibuti.oauth2server.entity.RegisteredClientEntity;
 import com.kibuti.oauth2server.entity.User;
 import com.kibuti.oauth2server.payload.ClientRegistrationRequest;
@@ -59,58 +60,6 @@ public class ClientRegistrationService implements RegisteredClientRepository {
                 .orElse(null);
     }
 
-//    @Transactional
-//    public RegisteredClientEntity registerNewClient(ClientRegistrationRequest request, String username) {
-//        User user = userRepository.findByUsername(username)
-//                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-//
-//        RegisteredClientEntity client = createNewClientEntity(request.getClientName(), user);
-//
-//        // Set OAuth2 specific attributes
-//        client.setClientAuthenticationMethods(Set.of(
-//                ClientAuthenticationMethod.CLIENT_SECRET_BASIC.getValue()
-//        ));
-//
-//        client.setAuthorizationGrantTypes(Set.of(
-//                AuthorizationGrantType.AUTHORIZATION_CODE.getValue(),
-//                AuthorizationGrantType.REFRESH_TOKEN.getValue()
-//        ));
-//
-//        client.setRedirectUris(Set.copyOf(request.getRedirectUris()));
-//        client.setScopes(Set.copyOf(request.getScopes()));
-//
-//        // Client settings with PKCE if needed
-//        ClientSettings clientSettings = ClientSettings.builder()
-//                .requireAuthorizationConsent(true)
-//                .requireProofKey(request.isPublicClient())
-//                .build();
-//
-//        try {
-//            client.setClientSettings(objectMapper.writeValueAsString(clientSettings));
-//        } catch (JsonProcessingException e) {
-//            throw new RuntimeException("Error serializing client settings", e);
-//        }
-//
-//        // Token settings
-//        TokenSettings tokenSettings = TokenSettings.builder()
-//                .accessTokenTimeToLive(Duration.ofMinutes(30))
-//                .refreshTokenTimeToLive(Duration.ofDays(30))
-//                .reuseRefreshTokens(false)
-//                .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
-//                .idTokenSignatureAlgorithm(SignatureAlgorithm.RS256)
-//                .build();
-//
-//        try {
-//            client.setTokenSettings(objectMapper.writeValueAsString(tokenSettings));
-//        } catch (JsonProcessingException e) {
-//            throw new RuntimeException("Error serializing token settings", e);
-//        }
-//
-//        return clientRepository.save(client);
-//    }
-
-
-
     @Transactional
     public RegisteredClientEntity registerNewClient(ClientRegistrationRequest request, String username, String plainSecret) {
         User user = userRepository.findByUsername(username)
@@ -151,9 +100,10 @@ public class ClientRegistrationService implements RegisteredClientRepository {
             throw new RuntimeException("Error serializing client settings", e);
         }
 
-        // Token settings
+        // When creating token settings
         TokenSettings tokenSettings = TokenSettings.builder()
                 .accessTokenTimeToLive(Duration.ofMinutes(30))
+                .authorizationCodeTimeToLive(Duration.ofMinutes(10))  // Add this line
                 .refreshTokenTimeToLive(Duration.ofDays(30))
                 .reuseRefreshTokens(false)
                 .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
@@ -168,7 +118,6 @@ public class ClientRegistrationService implements RegisteredClientRepository {
 
         return clientRepository.save(client);
     }
-
 
     @Transactional(readOnly = true)
     public List<RegisteredClientEntity> getClientsByUser(String username) {
@@ -213,7 +162,6 @@ public class ClientRegistrationService implements RegisteredClientRepository {
         return entity;
     }
 
-    // Convert RegisteredClientEntity to Spring Security's RegisteredClient
     private RegisteredClient toObject(RegisteredClientEntity entity) {
         Set<String> clientAuthMethods = entity.getClientAuthenticationMethods();
         Set<String> authGrantTypes = entity.getAuthorizationGrantTypes();
@@ -224,14 +172,37 @@ public class ClientRegistrationService implements RegisteredClientRepository {
         TokenSettings tokenSettings;
 
         try {
-            clientSettings = objectMapper.readValue(entity.getClientSettings(), ClientSettings.class);
+            Map<String, Object> clientSettingsMap = objectMapper.readValue(entity.getClientSettings(),
+                    new TypeReference<>() {});
+
+            ClientSettings.Builder clientSettingsBuilder = ClientSettings.builder();
+            if (clientSettingsMap.containsKey("requireAuthorizationConsent")) {
+                clientSettingsBuilder.requireAuthorizationConsent((Boolean) clientSettingsMap.get("requireAuthorizationConsent"));
+            }
+            if (clientSettingsMap.containsKey("requireProofKey")) {
+                clientSettingsBuilder.requireProofKey((Boolean) clientSettingsMap.get("requireProofKey"));
+            }
+            clientSettings = clientSettingsBuilder.build();
         } catch (Exception e) {
             log.error("Error deserializing client settings", e);
             clientSettings = ClientSettings.builder().build();
         }
 
         try {
-            tokenSettings = objectMapper.readValue(entity.getTokenSettings(), TokenSettings.class);
+            Map<String, Object> tokenSettingsMap = objectMapper.readValue(entity.getTokenSettings(),
+                    new TypeReference<Map<String, Object>>() {});
+
+            TokenSettings.Builder tokenSettingsBuilder = TokenSettings.builder();
+            if (tokenSettingsMap.containsKey("accessTokenTimeToLive")) {
+                tokenSettingsBuilder.accessTokenTimeToLive(Duration.parse(tokenSettingsMap.get("accessTokenTimeToLive").toString()));
+            }
+            if (tokenSettingsMap.containsKey("authorizationCodeTimeToLive")) {
+                tokenSettingsBuilder.authorizationCodeTimeToLive(Duration.parse(tokenSettingsMap.get("authorizationCodeTimeToLive").toString()));
+            }
+            if (tokenSettingsMap.containsKey("refreshTokenTimeToLive")) {
+                tokenSettingsBuilder.refreshTokenTimeToLive(Duration.parse(tokenSettingsMap.get("refreshTokenTimeToLive").toString()));
+            }
+            tokenSettings = tokenSettingsBuilder.build();
         } catch (Exception e) {
             log.error("Error deserializing token settings", e);
             tokenSettings = TokenSettings.builder().build();
@@ -244,7 +215,6 @@ public class ClientRegistrationService implements RegisteredClientRepository {
                 .clientSecretExpiresAt(entity.getClientSecretExpiresAt())
                 .clientName(entity.getClientName());
 
-        // Add client authentication methods
         clientAuthMethods.forEach(method -> {
             if (ClientAuthenticationMethod.CLIENT_SECRET_BASIC.getValue().equals(method)) {
                 builder.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
@@ -255,7 +225,6 @@ public class ClientRegistrationService implements RegisteredClientRepository {
             }
         });
 
-        // Add authorization grant types
         authGrantTypes.forEach(grantType -> {
             if (AuthorizationGrantType.AUTHORIZATION_CODE.getValue().equals(grantType)) {
                 builder.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE);
@@ -266,10 +235,7 @@ public class ClientRegistrationService implements RegisteredClientRepository {
             }
         });
 
-        // Add redirect URIs
         redirectUris.forEach(builder::redirectUri);
-
-        // Add scopes
         scopes.forEach(builder::scope);
 
         return builder
@@ -277,6 +243,7 @@ public class ClientRegistrationService implements RegisteredClientRepository {
                 .tokenSettings(tokenSettings)
                 .build();
     }
+
 
     // Convert Spring Security's RegisteredClient to RegisteredClientEntity
     private RegisteredClientEntity toEntity(RegisteredClient registeredClient) {
@@ -326,4 +293,5 @@ public class ClientRegistrationService implements RegisteredClientRepository {
     private String generateSecureSecret() {
         return UUID.randomUUID().toString();
     }
+
 }

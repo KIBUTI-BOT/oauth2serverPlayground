@@ -1,5 +1,8 @@
 package com.kibuti.oauth2server.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.kibuti.oauth2server.repository.UserRepository;
 import com.kibuti.oauth2server.service.UserDetailsServiceImpl;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +20,7 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -47,50 +51,25 @@ public class AuthServerConfig {
         return http.build();
     }
 
-//    @Bean
-//    @Order(2)
-//    public SecurityFilterChain webSecurityFilterChain(HttpSecurity http) throws Exception {
-//        http
-//                .authorizeHttpRequests(authorize -> authorize
-//                        .requestMatchers("/register/**", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
-//                        .requestMatchers("/developer/**").authenticated()
-//                        .requestMatchers("/admin/**").hasRole("ADMIN")
-//                        .anyRequest().authenticated()
-//                )
-//                .formLogin(form -> form
-//                        .loginPage("/login")
-//                        .permitAll()
-//                )
-//                .logout(logout -> logout
-//                        .logoutSuccessUrl("/login?logout")
-//                        .permitAll()
-//                );
-//
-//        return http.build();
-//    }
-
-
     @Bean
-    @Order(2)
     public SecurityFilterChain webSecurityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/login", "/register/**", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
+                        .requestMatchers("/register/**", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
                         .requestMatchers("/developer/**").authenticated()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
-
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
                         .permitAll()
-                        .defaultSuccessUrl("/developer/dashboard", true)
+                        // Remove the defaultSuccessUrl to let Spring use the saved request
+                        .successHandler(new SavedRequestAwareAuthenticationSuccessHandler())
                 )
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
-                )
-                .authenticationProvider(authenticationProvider());
+                );
 
         return http.build();
     }
@@ -98,7 +77,7 @@ public class AuthServerConfig {
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder()
-                .issuer("https://auth.example.com")
+                .issuer("http://localhost:9000")
                 .build();
     }
 
@@ -118,6 +97,18 @@ public class AuthServerConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         return new UserDetailsServiceImpl(userRepository);
+    }
+
+    @Bean
+    public JavaTimeModule javaTimeModule() {
+        return new JavaTimeModule();
+    }
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return mapper;
     }
 
 }

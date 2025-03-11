@@ -87,15 +87,4 @@ public class RegisteredClientEntity {
 
     private boolean approved = false;
 
-    // Helper method to generate client ID and secret
-    public static RegisteredClientEntity createNew(String clientName, User owner) {
-        return RegisteredClientEntity.builder()
-                .id(UUID.randomUUID().toString())
-                .clientId(UUID.randomUUID().toString())
-                .clientIdIssuedAt(Instant.now())
-                .clientSecret(UUID.randomUUID().toString())
-                .clientName(clientName)
-                .owner(owner)
-                .build();
-    }
 }

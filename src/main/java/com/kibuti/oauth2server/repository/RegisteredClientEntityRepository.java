@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface RegisteredClientEntityRepository extends JpaRepository<RegisteredClientEntity, String> {
@@ -20,5 +21,5 @@ public interface RegisteredClientEntityRepository extends JpaRepository<Register
 
     List<RegisteredClientEntity> findTop10ByApprovedFalseOrderByClientIdIssuedAtDesc();
 
-    List<RegisteredClientEntity> findByOwnerId(Long ownerId);
+    List<RegisteredClientEntity> findByOwnerId(UUID ownerId);
 }

@@ -2,6 +2,7 @@ package com.kibuti.oauth2server.controller;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import com.kibuti.oauth2server.entity.RegisteredClientEntity;
 import com.kibuti.oauth2server.entity.User;
@@ -105,7 +106,7 @@ public class AdminController {
     }
 
     @GetMapping("/users/{userId}")
-    public String userDetails(@PathVariable Long userId, Model model) {
+    public String userDetails(@PathVariable UUID userId, Model model) {
         Optional<User> user = userRepository.findById(userId);
 
         if (user.isEmpty()) {
@@ -121,7 +122,7 @@ public class AdminController {
     }
 
     @PostMapping("/users/{userId}/toggle-status")
-    public String toggleUserStatus(@PathVariable Long userId, RedirectAttributes redirectAttributes) {
+    public String toggleUserStatus(@PathVariable UUID userId, RedirectAttributes redirectAttributes) {
         Optional<User> optionalUser = userRepository.findById(userId);
 
         if (optionalUser.isPresent()) {
@@ -139,7 +140,7 @@ public class AdminController {
     }
 
     @PostMapping("/users/{userId}/make-admin")
-    public String makeUserAdmin(@PathVariable Long userId, RedirectAttributes redirectAttributes) {
+    public String makeUserAdmin(@PathVariable UUID userId, RedirectAttributes redirectAttributes) {
         Optional<User> optionalUser = userRepository.findById(userId);
 
         if (optionalUser.isPresent()) {
@@ -156,7 +157,7 @@ public class AdminController {
     }
 
     @PostMapping("/users/{userId}/remove-admin")
-    public String removeUserAdmin(@PathVariable Long userId, RedirectAttributes redirectAttributes) {
+    public String removeUserAdmin(@PathVariable UUID userId, RedirectAttributes redirectAttributes) {
         Optional<User> optionalUser = userRepository.findById(userId);
 
         if (optionalUser.isPresent()) {

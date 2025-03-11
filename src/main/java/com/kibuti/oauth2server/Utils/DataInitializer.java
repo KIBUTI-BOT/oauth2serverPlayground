@@ -22,8 +22,9 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // Check if we need to create a default admin user
+        // Check if we need to create default users
         if (userRepository.count() == 0) {
+            // Create admin user
             User adminUser = new User();
             adminUser.setUsername("admin");
             adminUser.setPassword(passwordEncoder.encode("admin123"));
@@ -31,14 +32,28 @@ public class DataInitializer implements CommandLineRunner {
             adminUser.setFullName("Admin User");
             adminUser.setEnabled(true);
 
-            Set<String> roles = new HashSet<>();
-            roles.add("ADMIN");
-            roles.add("USER");
-            adminUser.setRoles(roles);
+            Set<String> adminRoles = new HashSet<>();
+            adminRoles.add("ADMIN");
+            adminRoles.add("USER");
+            adminUser.setRoles(adminRoles);
 
             userRepository.save(adminUser);
-
             System.out.println("Created default admin user: admin / admin123");
+
+            // Create regular user
+            User regularUser = new User();
+            regularUser.setUsername("user");
+            regularUser.setPassword(passwordEncoder.encode("password"));
+            regularUser.setEmail("user@example.com");
+            regularUser.setFullName("Regular User");
+            regularUser.setEnabled(true);
+
+            Set<String> userRoles = new HashSet<>();
+            userRoles.add("USER");
+            regularUser.setRoles(userRoles);
+
+            userRepository.save(regularUser);
+            System.out.println("Created default regular user: user / password");
         }
     }
 }
